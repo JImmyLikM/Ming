@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bucket List应用</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f5f5ff',
+                            100: '#ebebff',
+                            200: '#d1d1fe',
+                            300: '#b6b5fd',
+                            400: '#9190fa',
+                            500: '#5D5CDE',
+                            600: '#4a49b9',
+                            700: '#3c3b94',
+                            800: '#2e2e70',
+                            900: '#212158',
+                        },
+                        secondary: {
+                            50: '#f8f9fa',
+                            100: '#f1f3f5',
+                            200: '#e9ecef',
+                            300: '#dee2e6',
+                            400: '#ced4da',
+                            500: '#adb5bd',
+                            600: '#6c757d',
+                            700: '#495057',
+                            800: '#343a40',
+                            900: '#212529',
+                        },
+                        success: {
+                            50: '#e8f5e9',
+                            500: '#4caf50',
+                            600: '#43a047',
+                        },
+                        warning: {
+                            50: '#fffde7',
+                            500: '#ffca28',
+                            600: '#ffb300',
+                        },
+                        danger: {
+                            50: '#ffebee',
+                            500: '#ef5350',
+                            600: '#e53935',
+                        }
+                    },
+                    boxShadow: {
+                        'card': '0 1px 3px rgba(0, 0, 0, 0.1)',
+                        'card-hover': '0 4px 6px rgba(0, 0, 0, 0.12)',
+                        'btn': '0 1px 2px rgba(0, 0, 0, 0.08)',
+                        'dropdown': '0 4px 6px rgba(0, 0, 0, 0.15)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .dark {
+            color-scheme: dark;
+        }
+        
+        body {
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+        }
+        
+        .timer-display {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+        
+        .calendar-day {
+            position: relative;
+            transition: all 0.15s ease;
+        }
+        
+        .calendar-day:hover:not(.calendar-day-empty) {
+            background-color: rgba(93, 92, 222, 0.08);
+        }
+        
+        .calendar-day-today {
+            background-color: rgba(93, 92, 222, 0.12);
+            font-weight: 600;
+        }
+        
+        .calendar-day-selected {
+            border-color: var(--tw-ring-color) !important;
+        }
+        
+        .calendar-day-empty {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+        
+        .dark .calendar-day-empty {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        
+        .task-indicator {
+            position: absolute;
+            bottom: 3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+        }
+        
+        .bucket-item {
+            transition: background-color 0.2s ease;
+        }
+        
+        .bucket-item.completed {
+            opacity: 0.75;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Improved scrollbar styling */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(93, 92, 222, 0.2);
+            border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(93, 92, 222, 0.4);
+        }
+        
+        /* Timer animation */
+        .timer-alert {
+            animation: timerPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes timerPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Progress Bar */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform-origin: 50% 50%;
+            transform: rotate(-90deg);
+        }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            background-color: #4a49b9;
+            color: white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+            z-index: 9999;
+            transition: all 0.3s ease;
+            animation: slide-in 0.3s ease forwards;
+        }
+        
+        @keyframes slide-in {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .toast.hide {
+            animation: slide-out 0.3s ease forwards;
+        }
+        
+        @keyframes slide-out {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-secondary-800 dark:text-gray-100 min-h-screen transition-colors duration-300">
+    <div class="container mx-auto px-4 py-6 max-w-5xl">
+        <header class="mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-2xl md:text-3xl font-semibold text-secondary-900 dark:text-white">
+                    <span class="text-primary-600">Bucket List</span> 管理系统
+                </h1>
+                <div class="text-xs text-secondary-500 dark:text-secondary-400 bg-white dark:bg-gray-800 px-3 py-1.5 rounded-md shadow-btn">
+                    <span class="inline-block h-2 w-2 rounded-full bg-success-500 mr-1"></span> 本地存储已启用
+                </div>
+            </div>
+            <p class="text-secondary-600 dark:text-secondary-400 text-sm">高效地规划和管理您的人生目标清单</p>
+        </header>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- 左侧：日历 -->
+            <section class="bg-white dark:bg-gray-800 rounded-lg shadow-card border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-200 hover:shadow-card-hover lg:col-span-1">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h2 class="text-lg font-medium flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        日历视图
+                    </h2>
+                    <div class="text-primary-500 font-medium flex items-center" id="calendar-month-year"></div>
+                </div>
+                
+                <div class="p-4">
+                    <div class="flex justify-end space-x-1 mb-3">
+                        <button id="prev-month" class="p-1.5 rounded text-secondary-600 dark:text-secondary-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <button id="next-month" class="p-1.5 rounded text-secondary-600 dark:text-secondary-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium mb-2 text-secondary-500 dark:text-secondary-400">
+                        <div>日</div>
+                        <div>一</div>
+                        <div>二</div>
+                        <div>三</div>
+                        <div>四</div>
+                        <div>五</div>
+                        <div>六</div>
+                    </div>
+                    
+                    <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center">
+                        <!-- 日历日期会在JavaScript中生成 -->
+                    </div>
+                    
+                    <div class="mt-4 flex justify-between items-center">
+                        <div class="text-xs flex items-center">
+                            <span class="inline-block w-3 h-3 rounded-full bg-primary-200 dark:bg-primary-800 mr-1"></span>
+                            <span class="text-secondary-600 dark:text-secondary-400">今天</span>
+                        </div>
+                        <div class="text-xs flex items-center">
+                            <span class="inline-block w-3 h-3 rounded-full bg-primary-500 mr-1"></span>
+                            <span class="text-secondary-600 dark:text-secondary-400">有待办事项</span>
+                        </div>
+                        <div class="text-xs flex items-center">
+                            <span class="inline-block w-3 h-3 rounded-full ring-1 ring-primary-500 bg-white dark:bg-transparent mr-1"></span>
+                            <span class="text-secondary-600 dark:text-secondary-400">已选择</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-4 bg-gray-50 dark:bg-gray-750 border-t border-gray-200 dark:border-gray-700">
+                    <p id="selected-date" class="font-medium text-center text-sm text-secondary-800 dark:text-secondary-200">
+                        <span>今天</span>
+                    </p>
+                </div>
+            </section>
+
+            <!-- 右侧：Bucket List -->
+            <section class="bg-white dark:bg-gray-800 rounded-lg shadow-card border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-card-hover lg:col-span-2 flex flex-col">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h2 class="text-lg font-medium flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        目标清单
+                    </h2>
+                    <div class="text-xs px-2 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded">
+                        <span id="items-count">0</span> 个待办
+                    </div>
+                </div>
+                
+                <form id="bucket-list-form" class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex">
+                        <input 
+                            type="text" 
+                            id="new-bucket-item" 
+                            class="flex-grow border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-l py-2 px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+                            placeholder="添加新目标..."
+                            required
+                        >
+                        <button 
+                            type="submit" 
+                            class="bg-primary-600 hover:bg-primary-700 focus:ring-2 focus:ring-primary-600 focus:ring-opacity-50 text-white font-medium py-2 px-4 rounded-r transition-colors duration-200 flex items-center shadow-btn"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            添加
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="bucket-list-container overflow-y-auto custom-scrollbar flex-grow p-4">
+                    <ul id="bucket-list" class="space-y-2">
+                        <!-- Bucket list项目会在JavaScript中生成 -->
+                    </ul>
+                    <div id="empty-list-message" class="text-center py-10 px-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <p class="text-secondary-600 dark:text-secondary-400 mb-1">当前日期没有目标</p>
+                        <p class="text-secondary-500 dark:text-secondary-500 text-xs">添加新目标以开始规划</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 底部：计时器 -->
+            <section class="bg-white dark:bg-gray-800 rounded-lg shadow-card border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-card-hover lg:col-span-3">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h2 class="text-lg font-medium flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        时间管理
+                    </h2>
+                    <div class="flex items-center">
+                        <div class="bg-secondary-100 dark:bg-gray-700 p-0.5 rounded-md flex text-xs">
+                            <button id="timer-mode-up" class="bg-primary-600 text-white py-1 px-3 rounded focus:outline-none transition-colors duration-200">
+                                顺时计时
+                            </button>
+                            <button id="timer-mode-down" class="text-secondary-600 dark:text-secondary-300 py-1 px-3 rounded focus:outline-none transition-colors duration-200">
+                                倒计时
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="p-6 flex flex-col md:flex-row items-center justify-between">
+                    <!-- 时间输入 (仅用于倒计时模式) -->
+                    <div id="timer-input-container" class="mb-4 md:mb-0 hidden fade-in md:w-1/3">
+                        <div class="flex justify-center space-x-3">
+                            <div class="w-16">
+                                <label for="hours-input" class="block text-xs text-center mb-1 text-secondary-500 dark:text-secondary-400">小时</label>
+                                <input 
+                                    type="number" 
+                                    id="hours-input" 
+                                    min="0" 
+                                    max="23" 
+                                    class="w-full text-center border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded py-2 px-1 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+                                    value="0"
+                                >
+                            </div>
+                            <div class="w-16">
+                                <label for="minutes-input" class="block text-xs text-center mb-1 text-secondary-500 dark:text-secondary-400">分钟</label>
+                                <input 
+                                    type="number" 
+                                    id="minutes-input" 
+                                    min="0" 
+                                    max="59" 
+                                    class="w-full text-center border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded py-2 px-1 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+                                    value="5"
+                                >
+                            </div>
+                            <div class="w-16">
+                                <label for="seconds-input" class="block text-xs text-center mb-1 text-secondary-500 dark:text-secondary-400">秒</label>
+                                <input 
+                                    type="number" 
+                                    id="seconds-input" 
+                                    min="0" 
+                                    max="59" 
+                                    class="w-full text-center border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded py-2 px-1 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors duration-200"
+                                    value="0"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 时间显示 -->
+                    <div class="flex items-center justify-center md:w-1/3">
+                        <div class="relative" style="width: 140px; height: 140px;">
+                            <svg class="timer-progress w-full h-full" viewBox="0 0 100 100">
+                                <circle class="text-gray-200 dark:text-gray-700" stroke-width="4" stroke="currentColor" fill="transparent" r="46" cx="50" cy="50" />
+                                <circle id="timer-progress-circle" class="progress-ring__circle text-primary-500" stroke-width="4" stroke="currentColor" fill="transparent" r="46" cx="50" cy="50" />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="text-3xl font-mono font-semibold timer-display" id="timer-display">00:00:00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 控制按钮 -->
+                    <div class="flex space-x-3 md:w-1/3 justify-center mt-4 md:mt-0">
+                        <button id="timer-start" class="bg-primary-600 hover:bg-primary-700 text-white py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-opacity-50 transition-colors duration-200 flex items-center shadow-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            开始
+                        </button>
+                        <button id="timer-pause" class="bg-warning-500 hover:bg-warning-600 text-white py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-warning-500 focus:ring-opacity-50 transition-colors duration-200 flex items-center shadow-btn" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            暂停
+                        </button>
+                        <button id="timer-reset" class="bg-danger-500 hover:bg-danger-600 text-white py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-danger-500 focus:ring-opacity-50 transition-colors duration-200 flex items-center shadow-btn" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            重置
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="mt-8 text-center text-xs text-secondary-500 dark:text-secondary-400 py-4 border-t border-gray-200 dark:border-gray-700">
+            <p>数据已保存在浏览器的本地存储中，关闭页面后数据不会丢失</p>
+        </footer>
+    </div>
+
+    <script>
+        // 检测和设置深色模式
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Toast 通知功能
+        function showToast(message, duration = 3000) {
+            // 首先移除任何现有的 toast
+            const existingToasts = document.querySelectorAll('.toast');
+            existingToasts.forEach(toast => {
+                toast.classList.add('hide');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            });
+            
+            // 创建新的 toast
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // 设置自动移除
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, duration);
+        }
+
+        // 应用初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initCalendar();
+            initBucketList();
+            initTimer();
+        });
+
+        // 全局变量，存储选定的日期
+        let selectedDate = new Date();
+        
+        // 格式化日期为YYYY-MM-DD格式，用于存储和比较
+        function formatDateToYYYYMMDD(date) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // 格式化日期为人类可读格式
+        function formatDateForDisplay(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${year}年${month}月${day}日`;
+        }
+        
+        // 日历功能
+        function initCalendar() {
+            const calendarDays = document.getElementById('calendar-days');
+            const monthYearDisplay = document.getElementById('calendar-month-year');
+            const prevMonthBtn = document.getElementById('prev-month');
+            const nextMonthBtn = document.getElementById('next-month');
+            const selectedDateSpan = document.querySelector('#selected-date span');
+            
+            let currentMonthDate = new Date(); // 当前显示的月份
+            
+            // 更新选中日期显示
+            function updateSelectedDateDisplay() {
+                selectedDateSpan.textContent = formatDateForDisplay(selectedDate);
+                
+                // 刷新bucket list显示以显示选中日期的项目
+                if (window.refreshBucketList) {
+                    window.refreshBucketList();
+                }
+            }
+            
+            // 日历日期点击处理
+            function handleDateClick(day, month, year) {
+                // 更新选中的日期
+                selectedDate = new Date(year, month, day);
+                
+                // 移除所有日期的选中样式
+                document.querySelectorAll('.calendar-day').forEach(el => {
+                    el.classList.remove('ring-2', 'ring-primary-500', 'calendar-day-selected');
+                });
+                
+                // 添加选中样式到当前选中的日期
+                event.currentTarget.classList.add('ring-2', 'ring-primary-500', 'calendar-day-selected');
+                
+                // 添加淡入动画效果
+                const bucketList = document.getElementById('bucket-list');
+                bucketList.classList.add('fade-in');
+                setTimeout(() => {
+                    bucketList.classList.remove('fade-in');
+                }, 300);
+                
+                // 更新显示
+                updateSelectedDateDisplay();
+            }
+            
+            function renderCalendar(date) {
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                
+                // 设置月份和年份显示
+                const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+                monthYearDisplay.textContent = `${monthNames[month]} ${year}`;
+                
+                // 清空日历
+                calendarDays.innerHTML = '';
+                
+                // 获取本月第一天和最后一天
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                
+                // 计算第一天是星期几（0是星期日）
+                const firstDayOfWeek = firstDay.getDay();
+                
+                // 添加上个月的空白天数
+                for (let i = 0; i < firstDayOfWeek; i++) {
+                    const emptyDay = document.createElement('div');
+                    emptyDay.className = 'calendar-day calendar-day-empty h-7 flex items-center justify-center rounded text-xs';
+                    calendarDays.appendChild(emptyDay);
+                }
+                
+                // 添加本月的天数
+                const today = new Date();
+                const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
+                
+                // 获取选中日期的信息，用于高亮显示
+                const selectedYear = selectedDate.getFullYear();
+                const selectedMonth = selectedDate.getMonth();
+                const selectedDay = selectedDate.getDate();
+                
+                for (let day = 1; day <= lastDay.getDate(); day++) {
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'calendar-day h-7 flex items-center justify-center rounded text-xs cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-750';
+                    dayElement.textContent = day;
+                    
+                    // 检查此日期是否有待办事项
+                    const dateStr = formatDateToYYYYMMDD(new Date(year, month, day));
+                    const hasItems = window.bucketItems && window.bucketItems.some(item => 
+                        item.date === dateStr && !item.completed
+                    );
+                    
+                    // 如果有待办事项，添加指示器
+                    if (hasItems) {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'task-indicator bg-primary-500';
+                        dayElement.appendChild(indicator);
+                    }
+                    
+                    // 如果是今天，添加特殊样式
+                    if (isCurrentMonth && day === today.getDate()) {
+                        dayElement.classList.add('calendar-day-today');
+                    }
+                    
+                    // 如果是选中的日期，添加选中样式
+                    if (year === selectedYear && month === selectedMonth && day === selectedDay) {
+                        dayElement.classList.add('ring-2', 'ring-primary-500', 'calendar-day-selected');
+                    }
+                    
+                    // 添加点击事件
+                    dayElement.addEventListener('click', (event) => {
+                        handleDateClick(day, month, year);
+                    });
+                    
+                    calendarDays.appendChild(dayElement);
+                }
+            }
+            
+            // 初始渲染日历
+            renderCalendar(currentMonthDate);
+            updateSelectedDateDisplay();
+            
+            // 设置月份导航按钮
+            prevMonthBtn.addEventListener('click', () => {
+                currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
+                renderCalendar(currentMonthDate);
+            });
+            
+            nextMonthBtn.addEventListener('click', () => {
+                currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
+                renderCalendar(currentMonthDate);
+            });
+            
+            // 导出函数以便其他模块调用
+            window.refreshCalendar = () => renderCalendar(currentMonthDate);
+        }
+
+        // Bucket List功能
+        function initBucketList() {
+            const bucketListForm = document.getElementById('bucket-list-form');
+            const newBucketItemInput = document.getElementById('new-bucket-item');
+            const bucketList = document.getElementById('bucket-list');
+            const emptyListMessage = document.getElementById('empty-list-message');
+            const itemsCount = document.getElementById('items-count');
+            
+            // localStorage 键名，用于存储数据
+            const STORAGE_KEY = 'bucketListItems';
+            
+            // 从 localStorage 加载数据
+            function loadFromLocalStorage() {
+                try {
+                    const data = localStorage.getItem(STORAGE_KEY);
+                    if (data) {
+                        return JSON.parse(data);
+                    }
+                } catch (error) {
+                    console.error('从本地存储加载数据时出错:', error);
+                }
+                
+                // // 如果没有数据或加载失败，返回一些示例项目
+                // const today = formatDateToYYYYMMDD(new Date());
+                // const tomorrow = formatDateToYYYYMMDD(new Date(new Date().setDate(new Date().getDate() + 1)));
+                // const nextWeek = formatDateToYYYYMMDD(new Date(new Date().setDate(new Date().getDate() + 7)));
+                
+                // return [
+                //     {
+                //         text: "创建我的第一个目标",
+                //         completed: false,
+                //         date: today,
+                //         createdAt: new Date().toISOString()
+                //     },
+                //     {
+                //         text: "计划一次旅行",
+                //         completed: false,
+                //         date: today,
+                //         createdAt: new Date().toISOString()
+                //     },
+                //     {
+                //         text: "阅读一本新书",
+                //         completed: false,
+                //         date: tomorrow,
+                //         createdAt: new Date().toISOString()
+                //     },
+                //     {
+                //         text: "学习一项新技能",
+                //         completed: false,
+                //         date: nextWeek,
+                //         createdAt: new Date().toISOString()
+                //     }
+                // ];
+            }
+            
+            // 保存数据到 localStorage
+            function saveToLocalStorage() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(window.bucketItems));
+                    return true;
+                } catch (error) {
+                    console.error('保存数据到本地存储时出错:', error);
+                    return false;
+                }
+            }
+            
+            // 在内存中存储bucket list项目 - 从 localStorage 加载
+            window.bucketItems = loadFromLocalStorage();
+            
+            function updateEmptyListMessage() {
+                // 获取当前选中日期的任务
+                const currentDateItems = getItemsForSelectedDate();
+                if (currentDateItems.length === 0) {
+                    emptyListMessage.style.display = 'block';
+                } else {
+                    emptyListMessage.style.display = 'none';
+                }
+                
+                // 更新待办计数
+                const incompleteItems = currentDateItems.filter(item => !item.completed).length;
+                itemsCount.textContent = incompleteItems;
+            }
+            
+            // 获取当前选中日期的任务
+            function getItemsForSelectedDate() {
+                const selectedDateStr = formatDateToYYYYMMDD(selectedDate);
+                return window.bucketItems.filter(item => item.date === selectedDateStr);
+            }
+            
+            function renderBucketList() {
+                bucketList.innerHTML = '';
+                
+                // 获取当前选中日期的任务，并根据完成状态排序（未完成的排在前面）
+                const itemsToShow = getItemsForSelectedDate()
+                    .sort((a, b) => {
+                        if (a.completed === b.completed) return 0;
+                        return a.completed ? 1 : -1;
+                    });
+                
+                itemsToShow.forEach((item, index) => {
+                    // 找到实际的全局索引，以便正确删除/标记项目
+                    const globalIndex = window.bucketItems.findIndex(
+                        i => i.createdAt === item.createdAt
+                    );
+                    
+                    const li = document.createElement('li');
+                    li.className = 'bucket-item flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded ' + 
+                                  (item.completed ? 'bg-gray-50 dark:bg-gray-750 completed' : 'bg-white dark:bg-gray-800');
+                    li.id = `bucket-item-${globalIndex}`;
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `item-check-${globalIndex}`;
+                    checkbox.className = 'h-4 w-4 text-primary-600 rounded border-gray-300 dark:border-gray-600 focus:ring-primary-500';
+                    checkbox.checked = item.completed;
+                    
+                    // 修复checkbox问题：确保每个checkbox都有唯一的ID，并且直接调用toggleItemComplete
+                    checkbox.addEventListener('change', (e) => {
+                        // 使用数据属性存储全局索引，而不是依赖闭包
+                        toggleItemComplete(globalIndex);
+                    });
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `item-check-${globalIndex}`; // 关联label和checkbox
+                    label.className = 'ml-3 flex-grow cursor-pointer text-sm ' + 
+                                     (item.completed ? 'line-through text-secondary-500 dark:text-secondary-400' : '');
+                    label.textContent = item.text;
+                    
+                    const deleteButton = document.createElement('button');
+                    deleteButton.className = 'ml-2 text-secondary-500 hover:text-danger-600 dark:text-secondary-400 dark:hover:text-danger-400 transition-colors duration-200 p-1';
+                    deleteButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+                    deleteButton.addEventListener('click', () => {
+                        // 添加删除动画效果
+                        li.style.opacity = '0';
+                        li.style.transform = 'translateX(10px)';
+                        li.style.transition = 'all 0.2s ease';
+                        
+                        setTimeout(() => {
+                            deleteItem(globalIndex);
+                        }, 200);
+                    });
+                    
+                    li.appendChild(checkbox);
+                    li.appendChild(label);
+                    li.appendChild(deleteButton);
+                    bucketList.appendChild(li);
+                });
+                
+                updateEmptyListMessage();
+            }
+            
+            function addItem(text) {
+                const newItem = {
+                    text: text,
+                    completed: false,
+                    date: formatDateToYYYYMMDD(selectedDate),
+                    createdAt: new Date().toISOString()
+                };
+                
+                window.bucketItems.push(newItem);
+                renderBucketList();
+                
+                // 保存到本地存储
+                if (saveToLocalStorage()) {
+                    showToast('目标已保存');
+                }
+                
+                // 刷新日历以显示新添加项目的指示器
+                if (window.refreshCalendar) {
+                    window.refreshCalendar();
+                }
+            }
+            
+            function toggleItemComplete(index) {
+                // 直接修改数据源中的completed状态
+                window.bucketItems[index].completed = !window.bucketItems[index].completed;
+                
+                // 更新UI，不需要重新渲染整个列表
+                const li = document.getElementById(`bucket-item-${index}`);
+                const checkbox = document.getElementById(`item-check-${index}`);
+                const label = li.querySelector('label');
+                
+                if (window.bucketItems[index].completed) {
+                    li.classList.add('bg-gray-50', 'dark:bg-gray-750', 'completed');
+                    label.classList.add('line-through', 'text-secondary-500', 'dark:text-secondary-400');
+                    showToast('目标已完成');
+                } else {
+                    li.classList.remove('bg-gray-50', 'dark:bg-gray-750', 'completed');
+                    label.classList.remove('line-through', 'text-secondary-500', 'dark:text-secondary-400');
+                    showToast('目标已重启');
+                }
+                
+                // 确保checkbox状态与数据源一致
+                checkbox.checked = window.bucketItems[index].completed;
+                
+                // 保存到本地存储
+                saveToLocalStorage();
+                
+                // 更新计数和日历指示器
+                updateEmptyListMessage();
+                if (window.refreshCalendar) {
+                    window.refreshCalendar();
+                }
+            }
+            
+            function deleteItem(index) {
+                window.bucketItems.splice(index, 1);
+                renderBucketList();
+                
+                // 保存到本地存储
+                if (saveToLocalStorage()) {
+                    showToast('目标已删除');
+                }
+                
+                // 刷新日历以更新指示器
+                if (window.refreshCalendar) {
+                    window.refreshCalendar();
+                }
+            }
+            
+            // 表单提交事件处理
+            bucketListForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = newBucketItemInput.value.trim();
+                if (text) {
+                    addItem(text);
+                    newBucketItemInput.value = '';
+                    newBucketItemInput.focus();
+                } else {
+                    // 如果输入为空，添加提示
+                    newBucketItemInput.classList.add('ring-2', 'ring-danger-500');
+                    setTimeout(() => {
+                        newBucketItemInput.classList.remove('ring-2', 'ring-danger-500');
+                    }, 800);
+                }
+            });
+            
+            // 初始渲染bucket list
+            renderBucketList();
+            
+            // 导出函数以便日历模块调用
+            window.refreshBucketList = renderBucketList;
+        }
+
+        // 计时器功能
+        function initTimer() {
+            const timerDisplay = document.getElementById('timer-display');
+            const timerProgressCircle = document.getElementById('timer-progress-circle');
+            const startBtn = document.getElementById('timer-start');
+            const pauseBtn = document.getElementById('timer-pause');
+            const resetBtn = document.getElementById('timer-reset');
+            const timerModeUpBtn = document.getElementById('timer-mode-up');
+            const timerModeDownBtn = document.getElementById('timer-mode-down');
+            const timerInputContainer = document.getElementById('timer-input-container');
+            const hoursInput = document.getElementById('hours-input');
+            const minutesInput = document.getElementById('minutes-input');
+            const secondsInput = document.getElementById('seconds-input');
+            
+            let startTime;
+            let elapsedTime = 0;
+            let totalTime = 0; // 用于倒计时模式
+            let timerInterval;
+            let isRunning = false;
+            let isCountDown = false; // false为顺时计时，true为倒计时
+            
+            // 修复圆形进度条的周长计算
+            const circle = timerProgressCircle;
+            const radius = parseInt(circle.getAttribute('r'));
+            const circumference = 2 * Math.PI * radius;
+            
+            // 设置初始周长
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = isCountDown ? '0' : `${circumference}`;
+            
+            // 更新进度环
+            function updateProgressRing(percent) {
+                const offset = circumference - (percent / 100) * circumference;
+                timerProgressCircle.style.strokeDashoffset = offset;
+            }
+            
+            // 格式化时间显示 (秒 -> HH:MM:SS)
+            function formatTime(timeInSeconds) {
+                // 确保时间不为负数
+                timeInSeconds = Math.max(0, timeInSeconds);
+                const hours = Math.floor(timeInSeconds / 3600).toString().padStart(2, '0');
+                const minutes = Math.floor((timeInSeconds % 3600) / 60).toString().padStart(2, '0');
+                const seconds = Math.floor(timeInSeconds % 60).toString().padStart(2, '0');
+                return `${hours}:${minutes}:${seconds}`;
+            }
+            
+            // 更新计时器显示（顺时计时）
+            function updateTimerCountUp() {
+                const currentTime = Date.now();
+                const totalElapsedTime = elapsedTime + (currentTime - startTime) / 1000;
+                timerDisplay.textContent = formatTime(totalElapsedTime);
+                
+                // 使用一个小的值来表示进度，因为顺时计时没有上限
+                // 最多显示1小时的进度
+                const maxSeconds = 3600; // 1小时
+                const progressPercent = Math.min(100, (totalElapsedTime / maxSeconds) * 100);
+                updateProgressRing(progressPercent);
+            }
+            
+            // 更新计时器显示（倒计时）
+            function updateTimerCountDown() {
+                const currentTime = Date.now();
+                const elapsed = (currentTime - startTime) / 1000;
+                const remaining = Math.max(0, totalTime - elapsed - elapsedTime);
+                
+                if (remaining <= 0) {
+                    // 倒计时结束
+                    timerDisplay.textContent = '00:00:00';
+                    updateProgressRing(0);
+                    timerComplete();
+                    return;
+                }
+                
+                // 当剩余时间小于10秒时，添加提示样式
+                if (remaining < 10 && !timerDisplay.classList.contains('timer-alert')) {
+                    timerDisplay.classList.add('timer-alert', 'text-danger-500');
+                }
+                
+                // 更新进度环 - 从100%递减到0%
+                const progressPercent = (remaining / totalTime) * 100;
+                updateProgressRing(progressPercent);
+                
+                timerDisplay.textContent = formatTime(remaining);
+            }
+            
+            // 倒计时完成处理
+            function timerComplete() {
+                clearInterval(timerInterval);
+                isRunning = false;
+                timerDisplay.classList.add('text-danger-500');
+                timerDisplay.classList.remove('timer-alert');
+                
+                // 播放音效提示（使用一个简单的"beep"声音）
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 800;
+                    gainNode.gain.value = 0.5;
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.start(0);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } catch (e) {
+                    console.log('音频API不可用', e);
+                }
+                
+                // 重置按钮状态
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                resetBtn.disabled = false;
+                
+                // 显示倒计时完成消息
+                showToast('计时器已完成！', 5000);
+                
+                setTimeout(() => {
+                    timerDisplay.classList.remove('text-danger-500');
+                }, 1500);
+            }
+            
+            // 根据输入获取时间（以秒为单位）
+            function getInputTime() {
+                const hours = parseInt(hoursInput.value) || 0;
+                const minutes = parseInt(minutesInput.value) || 0;
+                const seconds = parseInt(secondsInput.value) || 0;
+                
+                return hours * 3600 + minutes * 60 + seconds;
+            }
+            
+            // 设置计时器模式（顺时/倒计时）
+            function setTimerMode(countDown) {
+                isCountDown = countDown;
+                
+                // 重置计时器
+                clearInterval(timerInterval);
+                isRunning = false;
+                elapsedTime = 0;
+                
+                // 移除任何动画和特殊状态
+                timerDisplay.classList.remove('timer-alert', 'text-danger-500');
+                
+                // 更新UI
+                if (countDown) {
+                    timerModeUpBtn.classList.remove('bg-primary-600');
+                    timerModeUpBtn.classList.add('bg-transparent');
+                    timerModeUpBtn.classList.remove('text-white');
+                    timerModeUpBtn.classList.add('text-secondary-600', 'dark:text-secondary-300');
+                    
+                    timerModeDownBtn.classList.remove('bg-transparent');
+                    timerModeDownBtn.classList.add('bg-primary-600');
+                    timerModeDownBtn.classList.remove('text-secondary-600', 'dark:text-secondary-300');
+                    timerModeDownBtn.classList.add('text-white');
+                    
+                    timerInputContainer.classList.remove('hidden');
+                    
+                    // 显示初始时间
+                    totalTime = getInputTime();
+                    timerDisplay.textContent = formatTime(totalTime);
+                    updateProgressRing(100); // 初始状态为100%
+                } else {
+                    timerModeDownBtn.classList.remove('bg-primary-600');
+                    timerModeDownBtn.classList.add('bg-transparent');
+                    timerModeDownBtn.classList.remove('text-white');
+                    timerModeDownBtn.classList.add('text-secondary-600', 'dark:text-secondary-300');
+                    
+                    timerModeUpBtn.classList.remove('bg-transparent');
+                    timerModeUpBtn.classList.add('bg-primary-600');
+                    timerModeUpBtn.classList.remove('text-secondary-600', 'dark:text-secondary-300');
+                    timerModeUpBtn.classList.add('text-white');
+                    
+                    timerInputContainer.classList.add('hidden');
+                    
+                    // 重置显示
+                    timerDisplay.textContent = '00:00:00';
+                    updateProgressRing(0); // 初始状态为0%
+                }
+                
+                // 重置按钮状态
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                resetBtn.disabled = true;
+            }
+            
+            // 开始计时
+            function startTimer() {
+                if (isRunning) return;
+                
+                // 移除任何动画类
+                timerDisplay.classList.remove('timer-alert', 'text-danger-500');
+                
+                // 在倒计时模式下，检查是否设置了时间
+                if (isCountDown) {
+                    totalTime = getInputTime();
+                    if (totalTime <= 0) {
+                        // 如果没有设置时间，闪烁输入框提示用户
+                        [hoursInput, minutesInput, secondsInput].forEach(input => {
+                            input.classList.add('ring-2', 'ring-danger-500');
+                            setTimeout(() => {
+                                input.classList.remove('ring-2', 'ring-danger-500');
+                            }, 800);
+                        });
+                        return;
+                    }
+                    
+                    // 更新显示
+                    timerDisplay.textContent = formatTime(totalTime - elapsedTime);
+                    updateProgressRing(100); // 开始时为100%
+                }
+                
+                startTime = Date.now();
+                timerInterval = setInterval(
+                    isCountDown ? updateTimerCountDown : updateTimerCountUp, 
+                    100
+                );
+                isRunning = true;
+                
+                // 更新按钮状态
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+                resetBtn.disabled = false;
+                
+                // 禁用输入区域
+                if (isCountDown) {
+                    hoursInput.disabled = true;
+                    minutesInput.disabled = true;
+                    secondsInput.disabled = true;
+                }
+            }
+            
+            // 暂停计时
+            function pauseTimer() {
+                if (!isRunning) return;
+                
+                clearInterval(timerInterval);
+                
+                if (isCountDown) {
+                    // 计算已经过去的时间
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    elapsedTime += elapsed;
+                    
+                    // 移除闪烁动画
+                    timerDisplay.classList.remove('timer-alert');
+                } else {
+                    // 顺时计时模式
+                    elapsedTime += (Date.now() - startTime) / 1000;
+                }
+                
+                isRunning = false;
+                
+                // 更新按钮状态
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                
+                // 启用输入区域
+                if (isCountDown) {
+                    hoursInput.disabled = false;
+                    minutesInput.disabled = false;
+                    secondsInput.disabled = false;
+                }
+            }
+            
+            // 重置计时器
+            function resetTimer() {
+                clearInterval(timerInterval);
+                elapsedTime = 0;
+                isRunning = false;
+                
+                // 移除动画
+                timerDisplay.classList.remove('timer-alert', 'text-danger-500');
+                
+                if (isCountDown) {
+                    // 重置为输入的时间
+                    totalTime = getInputTime();
+                    timerDisplay.textContent = formatTime(totalTime);
+                    updateProgressRing(100); // 重置为100%
+                    
+                    // 启用输入区域
+                    hoursInput.disabled = false;
+                    minutesInput.disabled = false;
+                    secondsInput.disabled = false;
+                } else {
+                    // 重置为0
+                    timerDisplay.textContent = '00:00:00';
+                    updateProgressRing(0); // 重置为0%
+                }
+                
+                // 重置按钮状态
+                startBtn.disabled = false;
+                pauseBtn.disabled = true;
+                resetBtn.disabled = true;
+            }
+            
+            // 为输入字段添加监听器，实时更新显示时间
+            function updateDisplayFromInputs() {
+                if (!isCountDown || isRunning) return;
+                totalTime = getInputTime();
+                timerDisplay.textContent = formatTime(totalTime);
+            }
+            
+            // 限制输入
+            function restrictInput(input, min, max) {
+                let value = parseInt(input.value) || 0;
+                if (value < min) value = min;
+                if (value > max) value = max;
+                input.value = value;
+            }
+            
+            // 事件监听器
+            startBtn.addEventListener('click', startTimer);
+            pauseBtn.addEventListener('click', pauseTimer);
+            resetBtn.addEventListener('click', resetTimer);
+            
+            // 模式切换按钮
+            timerModeUpBtn.addEventListener('click', () => setTimerMode(false));
+            timerModeDownBtn.addEventListener('click', () => setTimerMode(true));
+            
+            // 输入监听
+            hoursInput.addEventListener('input', () => {
+                restrictInput(hoursInput, 0, 23);
+                updateDisplayFromInputs();
+            });
+            
+            minutesInput.addEventListener('input', () => {
+                restrictInput(minutesInput, 0, 59);
+                updateDisplayFromInputs();
+            });
+            
+            secondsInput.addEventListener('input', () => {
+                restrictInput(secondsInput, 0, 59);
+                updateDisplayFromInputs();
+            });
+            
+            // 初始设置
+            setTimerMode(false);
+        }
+    </script>
+</body>
+</html>
